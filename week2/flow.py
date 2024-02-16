@@ -100,7 +100,7 @@ class MaskedCouplingLayer(nn.Module):
         t = self.translation_net(x_masked)
         x_transformed = (1 - self.mask) * (x - t) * torch.exp(-s)
         z = x_masked + x_transformed
-        log_det_J = -torch.sum((1 - self.mask) * s, dim=1)
+        log_det_J = - torch.sum((1 - self.mask) * s, dim=1)
         return z, log_det_J
 
 
@@ -217,6 +217,7 @@ def train(model, optimizer, data_loader, epochs, device):
     device: [torch.device]
         The device to use for training.
     """
+    model.to(device)
     model.train()
 
     total_steps = len(data_loader)*epochs
@@ -240,7 +241,7 @@ if __name__ == "__main__":
     import torch.utils.data
     from torchvision import datasets, transforms
     from torchvision.utils import save_image
-    import week2.ToyData as ToyData
+    import ToyData as ToyData
 
     # Parse arguments
     import argparse
@@ -273,8 +274,8 @@ if __name__ == "__main__":
     transformations =[]
     mask = torch.Tensor([1 if (i+j) % 2 == 0 else 0 for i in range(28) for j in range(28)])
     
-    num_transformations = 5
-    num_hidden = 8
+    num_transformations = 16
+    num_hidden = 256
 
     # Make a mask that is 1 for the first half of the features and 0 for the second half
     mask = torch.zeros((D,))
