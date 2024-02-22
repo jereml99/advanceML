@@ -46,7 +46,20 @@ class DDPM(nn.Module):
         """
 
         ### Implement Algorithm 1 here ###
-        neg_elbo = 0
+        t = torch.randint(1, self.T, (x.shape[0],)).to(self.alpha.device)
+        
+        noise = torch.randn(x.shape).to(self.alpha.device)
+        
+        sqrt_alpha_bar = torch.sqrt(self.alphas_bar[t])
+        sqrt_alpha_bar = sqrt_alpha_bar[:, None, None, None] # match image dimensions
+        sqrt_one_minus_alpha_bar = torch.sqrt(1 - self.alphas_bar[t])
+        sqrt_one_minus_alpha_bar = sqrt_one_minus_alpha_bar[:, None, None, None]# match image dimensions
+        
+        x_t = sqrt_alpha_bar * x + sqrt_one_minus_alpha_bar * noise
+        
+        predicted_noise = self.network(x_t, t)
+        
+        neg_elbo = (noise - predicted_noise) ** 2
 
         return neg_elbo
 
