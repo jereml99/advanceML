@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torch.distributions as td
 from tqdm import tqdm
+from minist import minist_dataset
 
 class GaussianBase(nn.Module):
     def __init__(self, D):
@@ -225,7 +226,7 @@ def train(model, optimizer, data_loader, epochs, device):
 
     for epoch in range(epochs):
         data_iter = iter(data_loader)
-        for x in data_iter:
+        for x, _ in data_iter:
             x = x.to(device)
             optimizer.zero_grad()
             loss = model.loss(x)
@@ -235,6 +236,8 @@ def train(model, optimizer, data_loader, epochs, device):
             # Update progress bar
             progress_bar.set_postfix(loss=f"⠀{loss.item():12.4f}", epoch=f"{epoch+1}/{epochs}")
             progress_bar.update()
+
+
 
 
 if __name__ == "__main__":
@@ -263,11 +266,11 @@ if __name__ == "__main__":
     # Generate the data
     n_data = 10000000
     toy = {'tg': ToyData.TwoGaussians, 'cb': ToyData.Chequerboard}[args.data]()
-    train_loader = torch.utils.data.DataLoader(toy().sample((n_data,)), batch_size=args.batch_size, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(toy().sample((n_data,)), batch_size=args.batch_size, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(minist_dataset, batch_size=args.batch_size, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(minist_dataset, batch_size=args.batch_size, shuffle=True)
 
     # Define prior distribution
-    D = next(iter(train_loader)).shape[1]
+    D = next(iter(train_loader))[0].shape[1]
     base = GaussianBase(D)
 
     # Define transformations
@@ -283,7 +286,7 @@ if __name__ == "__main__":
     
     for i in range(num_transformations):
         mask = (1-mask) # Flip the mask
-        scale_net = nn.Sequential(nn.Linear(D, num_hidden), nn.ReLU(), nn.Linear(num_hidden, D))
+        scale_net = nn.Sequential(nn.Linear(D, num_hidden), nn.ReLU(), nn.Linear(num_hidden, D), nn.Tanh())
         translation_net = nn.Sequential(nn.Linear(D, num_hidden), nn.ReLU(), nn.Linear(num_hidden, D))
         transformations.append(MaskedCouplingLayer(scale_net, translation_net, mask))
 
@@ -310,18 +313,8 @@ if __name__ == "__main__":
         # Generate samples
         model.eval()
         with torch.no_grad():
-            samples = (model.sample((10000,))).cpu() 
-
+            samples = (model.sample((args.batch_size,))).cpu() 
+            
+        samples = samples.view(args.batch_size, 1, 28, 28)
         # Plot the density of the toy data and the model samples
-        coordinates = [[[x,y] for x in np.linspace(*toy.xlim, 1000)] for y in np.linspace(*toy.ylim, 1000)]
-        prob = torch.exp(toy().log_prob(torch.tensor(coordinates)))
-
-        fig, ax = plt.subplots(1, 1, figsize=(7, 5))
-        im = ax.imshow(prob, extent=[toy.xlim[0], toy.xlim[1], toy.ylim[0], toy.ylim[1]], origin='lower', cmap='YlOrRd')
-        ax.scatter(samples[:, 0], samples[:, 1], s=1, c='black', alpha=0.5)
-        ax.set_xlim(toy.xlim)
-        ax.set_ylim(toy.ylim)
-        ax.set_aspect('equal')
-        fig.colorbar(im)
-        plt.savefig(args.samples)
-        plt.close()
+        save_image(samples, args.samples, nrow=10)

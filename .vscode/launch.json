@@ -27,6 +27,19 @@
                 "train"
             ],
             "justMyCode": true
+        },
+        {
+            "name": "sample",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "sample",
+                "--batch-size",
+                "20"
+            ],
+            "justMyCode": true
         }
     ]
     
