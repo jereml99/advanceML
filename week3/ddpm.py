@@ -50,9 +50,9 @@ class DDPM(nn.Module):
         
         noise = torch.randn(x.shape).to(self.alpha.device)
         
-        sqrt_alpha_bar = torch.sqrt(self.alphas_bar[t])
+        sqrt_alpha_bar = torch.sqrt(self.alpha_cumprod[t])
         sqrt_alpha_bar = sqrt_alpha_bar[:, None, None, None] # match image dimensions
-        sqrt_one_minus_alpha_bar = torch.sqrt(1 - self.alphas_bar[t])
+        sqrt_one_minus_alpha_bar = torch.sqrt(1 - self.alpha_cumprod[t])
         sqrt_one_minus_alpha_bar = sqrt_one_minus_alpha_bar[:, None, None, None]# match image dimensions
         
         x_t = sqrt_alpha_bar * x + sqrt_one_minus_alpha_bar * noise
@@ -80,7 +80,21 @@ class DDPM(nn.Module):
         # Sample x_t given x_{t+1} until x_0 is sampled
         for t in range(self.T-1, -1, -1):
             ### Implement the remaining of Algorithm 2 here ###
-            pass
+            alpha = self.alpha[t][:, None, None, None] # match image dimensions
+            alpha_bar = self.alpha_cumprod[t][:, None, None, None] # match image dimensions 
+            beta = self.beta[t][:, None, None, None] # match image dimensions
+            
+            if t[0] > 1:
+                noise = torch.randn_like(x_t, device=self.device)
+            else:
+                noise = torch.zeros_like(x_t, device=self.device)
+                
+            predicted_noise = self.network(x_t, t)
+            
+            mean = 1 / torch.sqrt(alpha) * (x_t - ((1 - alpha) / (torch.sqrt(1 - alpha_bar))) * predicted_noise) 
+            std = torch.sqrt(beta)
+            
+            x_t = mean + std * noise
 
         return x_t
 
