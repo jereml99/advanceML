@@ -47,13 +47,16 @@ class DDPM(nn.Module):
 
         ### Implement Algorithm 1 here ###
         t = torch.randint(1, self.T, (x.shape[0],)).to(self.alpha.device)
+        t = t.view([-1] + [1] * (x.dim()-1))
         
         noise = torch.randn(x.shape).to(self.alpha.device)
         
         sqrt_alpha_bar = torch.sqrt(self.alpha_cumprod[t])
-        sqrt_alpha_bar = sqrt_alpha_bar[:, None, None, None] # match image dimensions
+        sqrt_alpha_bar = sqrt_alpha_bar.view([-1] + [1] * (x.dim()-1))
+        # sqrt_alpha_bar = sqrt_alpha_bar[:, None, None, None] # match image dimensions
         sqrt_one_minus_alpha_bar = torch.sqrt(1 - self.alpha_cumprod[t])
-        sqrt_one_minus_alpha_bar = sqrt_one_minus_alpha_bar[:, None, None, None]# match image dimensions
+        sqrt_one_minus_alpha_bar = sqrt_one_minus_alpha_bar.view([-1] + [1] * (x.dim()-1))
+        # sqrt_one_minus_alpha_bar = sqrt_one_minus_alpha_bar[:, None, None, None]# match image dimensions
         
         x_t = sqrt_alpha_bar * x + sqrt_one_minus_alpha_bar * noise
         
@@ -80,14 +83,18 @@ class DDPM(nn.Module):
         # Sample x_t given x_{t+1} until x_0 is sampled
         for t in range(self.T-1, -1, -1):
             ### Implement the remaining of Algorithm 2 here ###
-            alpha = self.alpha[t][:, None, None, None] # match image dimensions
-            alpha_bar = self.alpha_cumprod[t][:, None, None, None] # match image dimensions 
-            beta = self.beta[t][:, None, None, None] # match image dimensions
+            # repeat t to match the batch size
+            t = torch.tensor([t] * shape[0]).to(self.alpha.device)
+            t = t.view([-1] + [1] * (x_t.dim()-1))
+            
+            alpha = self.alpha[t].view([-1] + [1] * (x_t.dim()-1)) # match image dimensions
+            alpha_bar = self.alpha_cumprod[t].view([-1] + [1] * (x_t.dim()-1)) # match image dimensions 
+            beta = self.beta[t].view([-1] + [1] * (x_t.dim()-1)) # match image dimensions
             
             if t[0] > 1:
-                noise = torch.randn_like(x_t, device=self.device)
+                noise = torch.randn_like(x_t, device=self.alpha.device)
             else:
-                noise = torch.zeros_like(x_t, device=self.device)
+                noise = torch.zeros_like(x_t, device=self.alpha.device)
                 
             predicted_noise = self.network(x_t, t)
             
@@ -190,9 +197,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('mode', type=str, default='train', choices=['train', 'sample', 'test'], help='what to do when running the script (default: %(default)s)')
     parser.add_argument('--data', type=str, default='tg', choices=['tg', 'cb', 'mnist'], help='dataset to use {tg: two Gaussians, cb: chequerboard} (default: %(default)s)')
-    parser.add_argument('--model', type=str, default='model.pt', help='file to save model to or load model from (default: %(default)s)')
-    parser.add_argument('--samples', type=str, default='samples.png', help='file to save samples in (default: %(default)s)')
-    parser.add_argument('--device', type=str, default='cpu', choices=['cpu', 'cuda', 'mps'], help='torch device (default: %(default)s)')
+    parser.add_argument('--model', type=str, default='week3/model.pt', help='file to save model to or load model from (default: %(default)s)')
+    parser.add_argument('--samples', type=str, default='week3/samples.png', help='file to save samples in (default: %(default)s)')
+    parser.add_argument('--device', type=str, default='cuda', choices=['cpu', 'cuda', 'mps'], help='torch device (default: %(default)s)')
     parser.add_argument('--batch-size', type=int, default=10000, metavar='N', help='batch size for training (default: %(default)s)')
     parser.add_argument('--epochs', type=int, default=1, metavar='N', help='number of epochs to train (default: %(default)s)')
     parser.add_argument('--lr', type=float, default=1e-3, metavar='V', help='learning rate for training (default: %(default)s)')
