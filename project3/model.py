@@ -152,6 +152,8 @@ class VAE(L.LightningModule):
         self.prior = prior
         self.decoder = decoder
         self.encoder = encoder
+        
+        self.save_hyperparameters()
 
     def elbo(self, X, A):
         """
@@ -180,7 +182,7 @@ class VAE(L.LightningModule):
            Number of samples to generate.
         """
         z = self.prior().sample(torch.Size([n_samples]))
-        return self.decoder(z).sample()
+        return rearrange(self.decoder(z).sample(), "b (c d) -> b c d", c=28)
 
     def forward(self, x, edge_index, batch):
         """
@@ -211,13 +213,20 @@ class VAE(L.LightningModule):
         self.log("train_loss", loss)
         return loss
     
+    def validation_step(self, batch, batch_idx):
+        x, edge_index, batch = batch.x, batch.edge_index, batch.batch
+        
+        loss = self(x, edge_index, batch)
+        self.log("validation_loss", loss)
+        return loss
+    
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=1e-3)
 
 if __name__ == "__main__":
         
-    LATENT_DIM = 3 
-    FILTER_LENGTH = 2
+    LATENT_DIM = 7 
+    FILTER_LENGTH = 4
     datamodule = TUDataMoudle()
     
     prior = GaussianPrior(LATENT_DIM)
@@ -225,10 +234,13 @@ if __name__ == "__main__":
     decoder = BernoulliDecoder(LATENT_DIM, 28*28)
     VAE_model = VAE(prior, decoder, encoder)
     
-    wandb_logger = L.pytorch.loggers.WandbLogger()
-    trainer = L.Trainer(max_epochs=1000, logger=wandb_logger)
+    wandb_logger = L.pytorch.loggers.WandbLogger( project="GenGNN")
+    trainer = L.Trainer(max_epochs=690, logger=wandb_logger)
    
-    trainer.fit(VAE_model, datamodule, ckpt_path="last")
+    trainer.fit(VAE_model, datamodule)
+    
+    trainer.save_checkpoint("project3/model.ckpt")
+
 
     
     
