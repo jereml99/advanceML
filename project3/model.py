@@ -205,26 +205,31 @@ class VAE(L.LightningModule):
         batch_idx: [int]
            Index of the batch.
         """
-        loss = self(batch)
+        x, edge_index, batch = batch.x, batch.edge_index, batch.batch
+        
+        loss = self(x, edge_index, batch)
         self.log("train_loss", loss)
         return loss
+    
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
 
 if __name__ == "__main__":
         
     LATENT_DIM = 3 
     FILTER_LENGTH = 2
     datamodule = TUDataMoudle()
-    datamodule.prepare_data()
-    datamodule.setup("fit")
-    
-    dataloader = datamodule.train_dataloader()
     
     prior = GaussianPrior(LATENT_DIM)
     encoder = SimpleGraphConv(FEATURE_DIM, FILTER_LENGTH, LATENT_DIM)
     decoder = BernoulliDecoder(LATENT_DIM, 28*28)
     VAE_model = VAE(prior, decoder, encoder)
     
-    for data in dataloader:
-        VAE_model(data.x, data.edge_index, data.batch)
-        break
+    wandb_logger = L.pytorch.loggers.WandbLogger()
+    trainer = L.Trainer(max_epochs=1000, logger=wandb_logger)
+   
+    trainer.fit(VAE_model, datamodule, ckpt_path="last")
+
+    
+    
             
