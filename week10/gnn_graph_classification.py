@@ -6,29 +6,35 @@ from torch_geometric.loader import DataLoader
 import matplotlib.pyplot as plt
 
 # %% Interactive plots
-plt.ion() # Enable interactive plotting
+plt.ion()  # Enable interactive plotting
+
+
 def drawnow():
     """Force draw the current plot."""
     plt.gcf().canvas.draw()
     plt.gcf().canvas.flush_events()
-    plt.savefig('plot.png')
+    plt.savefig("plot.png")
+
 
 # %% Device
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # %% Load the MUTAG dataset
 # Load data
-dataset = TUDataset(root='./data/', name='MUTAG').to(device)
+dataset = TUDataset(root="./data/", name="MUTAG").to(device)
 node_feature_dim = 7
 
 # Split into training and validation
 rng = torch.Generator().manual_seed(0)
-train_dataset, validation_dataset, test_dataset = random_split(dataset, (100, 44, 44), generator=rng)
+train_dataset, validation_dataset, test_dataset = random_split(
+    dataset, (100, 44, 44), generator=rng
+)
 
 # Create dataloader for training and validation
 train_loader = DataLoader(train_dataset, batch_size=100)
 validation_loader = DataLoader(validation_dataset, batch_size=44)
 test_loader = DataLoader(test_dataset, batch_size=44)
+
 
 # %% Define a simple GNN for graph classification
 class SimpleGNN(torch.nn.Module):
@@ -51,23 +57,28 @@ class SimpleGNN(torch.nn.Module):
 
         # Input network
         self.input_net = torch.nn.Sequential(
-            torch.nn.Linear(self.node_feature_dim, self.state_dim),
-            torch.nn.ReLU()
-            )
+            torch.nn.Linear(self.node_feature_dim, self.state_dim), torch.nn.ReLU()
+        )
 
         # Message networks
-        self.message_net = torch.nn.ModuleList([
-            torch.nn.Sequential(
-                torch.nn.Linear(self.state_dim, self.state_dim),
-                torch.nn.ReLU()
-            ) for _ in range(num_message_passing_rounds)])
+        self.message_net = torch.nn.ModuleList(
+            [
+                torch.nn.Sequential(
+                    torch.nn.Linear(self.state_dim, self.state_dim), torch.nn.ReLU()
+                )
+                for _ in range(num_message_passing_rounds)
+            ]
+        )
 
         # Update network
-        self.update_net = torch.nn.ModuleList([
-            torch.nn.Sequential(
-                torch.nn.Linear(self.state_dim, self.state_dim),
-                torch.nn.ReLU()
-            ) for _ in range(num_message_passing_rounds)])
+        self.update_net = torch.nn.ModuleList(
+            [
+                torch.nn.Sequential(
+                    torch.nn.Linear(self.state_dim, self.state_dim), torch.nn.ReLU()
+                )
+                for _ in range(num_message_passing_rounds)
+            ]
+        )
 
         # State output network
         self.output_net = torch.nn.Linear(self.state_dim, 1)
@@ -91,7 +102,7 @@ class SimpleGNN(torch.nn.Module):
 
         """
         # Extract number of nodes and graphs
-        num_graphs = batch.max()+1
+        num_graphs = batch.max() + 1
         num_nodes = batch.shape[0]
 
         # Initialize node state from node features
@@ -117,7 +128,8 @@ class SimpleGNN(torch.nn.Module):
         # Output
         out = self.output_net(graph_state).flatten()
         return out
-    
+
+
 # %% Set up the model, loss, and optimizer etc.
 # Instantiate the model
 state_dim = 8
@@ -147,8 +159,8 @@ validation_losses = []
 for epoch in range(epochs):
     # Loop over training batches
     model.train()
-    train_accuracy = 0.
-    train_loss = 0.
+    train_accuracy = 0.0
+    train_loss = 0.0
     for data in train_loader:
         out = model(data.x, data.edge_index, batch=data.batch)
         loss = cross_entropy(out, data.y.float())
@@ -159,53 +171,63 @@ for epoch in range(epochs):
         optimizer.step()
 
         # Compute training loss and accuracy
-        train_accuracy += sum((out>0) == data.y).detach().cpu() / len(train_loader.dataset)
-        train_loss += loss.detach().cpu().item() * data.batch_size / len(train_loader.dataset)
+        train_accuracy += sum((out > 0) == data.y).detach().cpu() / len(
+            train_loader.dataset
+        )
+        train_loss += (
+            loss.detach().cpu().item() * data.batch_size / len(train_loader.dataset)
+        )
 
     # Validation, print and plots
-    with torch.no_grad():    
+    with torch.no_grad():
         model.eval()
         # Compute validation loss and accuracy
-        validation_loss = 0.
-        validation_accuracy = 0.
+        validation_loss = 0.0
+        validation_accuracy = 0.0
         for data in validation_loader:
             out = model(data.x, data.edge_index, data.batch)
-            validation_accuracy += sum((out>0) == data.y).cpu() / len(validation_loader.dataset)
-            validation_loss += cross_entropy(out, data.y.float()).cpu().item() * data.batch_size / len(validation_loader.dataset)
+            validation_accuracy += sum((out > 0) == data.y).cpu() / len(
+                validation_loader.dataset
+            )
+            validation_loss += (
+                cross_entropy(out, data.y.float()).cpu().item()
+                * data.batch_size
+                / len(validation_loader.dataset)
+            )
 
         # Store the training and validation accuracy and loss for plotting
         train_accuracies.append(train_accuracy)
         train_losses.append(train_loss)
         validation_losses.append(validation_loss)
         validation_accuracies.append(validation_accuracy)
-        
+
         # Learning rate scheduler step
         scheduler.step(validation_loss)
         # Print stats and update plots
-        if (epoch+1)%10 == 0:
-            print(f'Epoch {epoch+1}')
-            print(f'- Learning rate   = {scheduler.get_last_lr()[0]:.1e}')
-            print(f'- Train. accuracy = {train_accuracy:.3f}')
-            print(f'         loss     = {train_loss:.3f}')
-            print(f'- Valid. accuracy = {validation_accuracy:.3f}')
-            print(f'         loss     = {validation_loss:.3f}')
+        if (epoch + 1) % 10 == 0:
+            print(f"Epoch {epoch+1}")
+            print(f"- Learning rate   = {scheduler.get_last_lr()[0]:.1e}")
+            print(f"- Train. accuracy = {train_accuracy:.3f}")
+            print(f"         loss     = {train_loss:.3f}")
+            print(f"- Valid. accuracy = {validation_accuracy:.3f}")
+            print(f"         loss     = {validation_loss:.3f}")
 
-            plt.figure('Loss').clf()
-            plt.plot(train_losses, label='Train')
-            plt.plot(validation_losses, label='Validation')
+            plt.figure("Loss").clf()
+            plt.plot(train_losses, label="Train")
+            plt.plot(validation_losses, label="Validation")
             plt.legend()
-            plt.xlabel('Epoch')
-            plt.ylabel('Cross entropy')
-            plt.yscale('log')
+            plt.xlabel("Epoch")
+            plt.ylabel("Cross entropy")
+            plt.yscale("log")
             plt.tight_layout()
             drawnow()
 
-            plt.figure('Accuracy').clf()
-            plt.plot(train_accuracies, label='Train')
-            plt.plot(validation_accuracies, label='Validation')
+            plt.figure("Accuracy").clf()
+            plt.plot(train_accuracies, label="Train")
+            plt.plot(validation_accuracies, label="Validation")
             plt.legend()
-            plt.xlabel('Epoch')
-            plt.ylabel('Accuracy')
+            plt.xlabel("Epoch")
+            plt.ylabel("Accuracy")
             plt.tight_layout()
             drawnow()
 
@@ -213,4 +235,4 @@ for epoch in range(epochs):
 with torch.no_grad():
     data = next(iter(test_loader))
     out = model(data.x, data.edge_index, data.batch).cpu()
-    torch.save(out, 'test_predictions.pt')
+    torch.save(out, "test_predictions.pt")

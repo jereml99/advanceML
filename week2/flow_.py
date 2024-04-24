@@ -10,13 +10,14 @@ import torch.distributions as td
 from tqdm import tqdm
 from minist import minist_dataset
 
+
 class GaussianBase(nn.Module):
     def __init__(self, D):
         """
         Define a Gaussian base distribution with zero mean and unit variance.
 
                 Parameters:
-        M: [int] 
+        M: [int]
            Dimension of the base distribution.
         """
         super(GaussianBase, self).__init__()
@@ -32,6 +33,7 @@ class GaussianBase(nn.Module):
         prior: [torch.distributions.Distribution]
         """
         return td.Independent(td.Normal(loc=self.mean, scale=self.std), 1)
+
 
 class MaskedCouplingLayer(nn.Module):
     """
@@ -81,7 +83,7 @@ class MaskedCouplingLayer(nn.Module):
         # Calculate log determinant of the Jacobian
         log_det_J = torch.sum((1 - self.mask) * s, dim=1)
         return z_prime, log_det_J
-    
+
     def inverse(self, x):
         """
         Transform a batch of data through the coupling layer (from data to the base).
@@ -96,12 +98,12 @@ class MaskedCouplingLayer(nn.Module):
             The sum of the log determinants of the Jacobian matrices of the inverse transformations.
         """
         x_masked = self.mask * x
-        
+
         s = self.scale_net(x_masked)
         t = self.translation_net(x_masked)
         x_transformed = (1 - self.mask) * (x - t) * torch.exp(-s)
         z = x_masked + x_transformed
-        log_det_J = - torch.sum((1 - self.mask) * s, dim=1)
+        log_det_J = -torch.sum((1 - self.mask) * s, dim=1)
         return z, log_det_J
 
 
@@ -109,7 +111,7 @@ class Flow(nn.Module):
     def __init__(self, base, transformations):
         """
         Define a normalizing flow model.
-        
+
         Parameters:
         base: [torch.distributions.Distribution]
             The base distribution.
@@ -123,7 +125,7 @@ class Flow(nn.Module):
     def forward(self, z):
         """
         Transform a batch of data through the flow (from the base to data).
-        
+
         Parameters:
         x: [torch.Tensor]
             The input to the transformation of dimension `(batch_size, feature_dim)`
@@ -131,7 +133,7 @@ class Flow(nn.Module):
         z: [torch.Tensor]
             The output of the transformation of dimension `(batch_size, feature_dim)`
         sum_log_det_J: [torch.Tensor]
-            The sum of the log determinants of the Jacobian matrices of the forward transformations.            
+            The sum of the log determinants of the Jacobian matrices of the forward transformations.
         """
         sum_log_det_J = 0
         for T in self.transformations:
@@ -139,7 +141,7 @@ class Flow(nn.Module):
             sum_log_det_J += log_det_J
             z = x
         return x, sum_log_det_J
-    
+
     def inverse(self, x):
         """
         Transform a batch of data through the flow (from data to the base).
@@ -159,7 +161,7 @@ class Flow(nn.Module):
             sum_log_det_J += log_det_J
             x = z
         return z, sum_log_det_J
-    
+
     def log_prob(self, x):
         """
         Compute the log probability of a batch of data under the flow.
@@ -173,7 +175,7 @@ class Flow(nn.Module):
         """
         z, log_det_J = self.inverse(x)
         return self.base().log_prob(z) + log_det_J
-    
+
     def sample(self, sample_shape=(1,)):
         """
         Sample from the flow.
@@ -187,13 +189,13 @@ class Flow(nn.Module):
         """
         z = self.base().sample(sample_shape)
         return self.forward(z)[0]
-    
+
     def loss(self, x):
         """
         Compute the negative mean log likelihood for the given data bath.
 
         Parameters:
-        x: [torch.Tensor] 
+        x: [torch.Tensor]
             A tensor of dimension `(batch_size, feature_dim)`
         Returns:
         loss: [torch.Tensor]
@@ -221,7 +223,7 @@ def train(model, optimizer, data_loader, epochs, device):
     model.to(device)
     model.train()
 
-    total_steps = len(data_loader)*epochs
+    total_steps = len(data_loader) * epochs
     progress_bar = tqdm(range(total_steps), desc="Training")
 
     for epoch in range(epochs):
@@ -234,10 +236,10 @@ def train(model, optimizer, data_loader, epochs, device):
             optimizer.step()
 
             # Update progress bar
-            progress_bar.set_postfix(loss=f"⠀{loss.item():12.4f}", epoch=f"{epoch+1}/{epochs}")
+            progress_bar.set_postfix(
+                loss=f"⠀{loss.item():12.4f}", epoch=f"{epoch+1}/{epochs}"
+            )
             progress_bar.update()
-
-
 
 
 if __name__ == "__main__":
@@ -248,53 +250,110 @@ if __name__ == "__main__":
 
     # Parse arguments
     import argparse
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('mode', type=str, default='train', choices=['train', 'sample'], help='what to do when running the script (default: %(default)s)')
-    parser.add_argument('--data', type=str, default='tg', choices=['tg', 'cb'], help='toy dataset to use {tg: two Gaussians, cb: chequerboard} (default: %(default)s)')
-    parser.add_argument('--model', type=str, default='model.pt', help='file to save model to or load model from (default: %(default)s)')
-    parser.add_argument('--samples', type=str, default='samples.png', help='file to save samples in (default: %(default)s)')
-    parser.add_argument('--device', type=str, default='cpu', choices=['cpu', 'cuda', 'mps'], help='torch device (default: %(default)s)')
-    parser.add_argument('--batch-size', type=int, default=10000, metavar='N', help='batch size for training (default: %(default)s)')
-    parser.add_argument('--epochs', type=int, default=1, metavar='N', help='number of epochs to train (default: %(default)s)')
-    parser.add_argument('--lr', type=float, default=1e-3, metavar='V', help='learning rate for training (default: %(default)s)')
+    parser.add_argument(
+        "mode",
+        type=str,
+        default="train",
+        choices=["train", "sample"],
+        help="what to do when running the script (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--data",
+        type=str,
+        default="tg",
+        choices=["tg", "cb"],
+        help="toy dataset to use {tg: two Gaussians, cb: chequerboard} (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="model.pt",
+        help="file to save model to or load model from (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--samples",
+        type=str,
+        default="samples.png",
+        help="file to save samples in (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="cpu",
+        choices=["cpu", "cuda", "mps"],
+        help="torch device (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=10000,
+        metavar="N",
+        help="batch size for training (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=1,
+        metavar="N",
+        help="number of epochs to train (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--lr",
+        type=float,
+        default=1e-3,
+        metavar="V",
+        help="learning rate for training (default: %(default)s)",
+    )
 
     args = parser.parse_args()
-    print('# Options')
+    print("# Options")
     for key, value in sorted(vars(args).items()):
-        print(key, '=', value)
+        print(key, "=", value)
 
     # Generate the data
     n_data = 10000000
-    toy = {'tg': ToyData.TwoGaussians, 'cb': ToyData.Chequerboard}[args.data]()
-    train_loader = torch.utils.data.DataLoader(minist_dataset, batch_size=args.batch_size, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(minist_dataset, batch_size=args.batch_size, shuffle=True)
+    toy = {"tg": ToyData.TwoGaussians, "cb": ToyData.Chequerboard}[args.data]()
+    train_loader = torch.utils.data.DataLoader(
+        minist_dataset, batch_size=args.batch_size, shuffle=True
+    )
+    test_loader = torch.utils.data.DataLoader(
+        minist_dataset, batch_size=args.batch_size, shuffle=True
+    )
 
     # Define prior distribution
     D = next(iter(train_loader))[0].shape[1]
     base = GaussianBase(D)
 
     # Define transformations
-    transformations =[]
-    mask = torch.Tensor([1 if (i+j) % 2 == 0 else 0 for i in range(28) for j in range(28)])
-    
+    transformations = []
+    mask = torch.Tensor(
+        [1 if (i + j) % 2 == 0 else 0 for i in range(28) for j in range(28)]
+    )
+
     num_transformations = 16
     num_hidden = 256
 
     # Make a mask that is 1 for the first half of the features and 0 for the second half
     mask = torch.zeros((D,))
-    mask[D//2:] = 1
-    
+    mask[D // 2 :] = 1
+
     for i in range(num_transformations):
-        mask = (1-mask) # Flip the mask
-        scale_net = nn.Sequential(nn.Linear(D, num_hidden), nn.ReLU(), nn.Linear(num_hidden, D), nn.Tanh())
-        translation_net = nn.Sequential(nn.Linear(D, num_hidden), nn.ReLU(), nn.Linear(num_hidden, D))
+        mask = 1 - mask  # Flip the mask
+        scale_net = nn.Sequential(
+            nn.Linear(D, num_hidden), nn.ReLU(), nn.Linear(num_hidden, D), nn.Tanh()
+        )
+        translation_net = nn.Sequential(
+            nn.Linear(D, num_hidden), nn.ReLU(), nn.Linear(num_hidden, D)
+        )
         transformations.append(MaskedCouplingLayer(scale_net, translation_net, mask))
 
     # Define flow model
     model = Flow(base, transformations).to(args.device)
 
     # Choose mode to run
-    if args.mode == 'train':
+    if args.mode == "train":
         # Define optimizer
         optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
@@ -304,17 +363,19 @@ if __name__ == "__main__":
         # Save model
         torch.save(model.state_dict(), args.model)
 
-    elif args.mode == 'sample':
+    elif args.mode == "sample":
         import matplotlib.pyplot as plt
         import numpy as np
 
-        model.load_state_dict(torch.load(args.model, map_location=torch.device(args.device)))
+        model.load_state_dict(
+            torch.load(args.model, map_location=torch.device(args.device))
+        )
 
         # Generate samples
         model.eval()
         with torch.no_grad():
-            samples = (model.sample((args.batch_size,))).cpu() 
-            
+            samples = (model.sample((args.batch_size,))).cpu()
+
         samples = samples.view(args.batch_size, 1, 28, 28)
         # Plot the density of the toy data and the model samples
         save_image(samples, args.samples, nrow=10)
