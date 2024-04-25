@@ -153,13 +153,8 @@ class VAE(L.LightningModule):
     def elbo(self, X, A):
         """
         Compute the ELBO for the given batch of data.
-
-        Parameters:
-        x: [torch.Tensor]
-           A tensor of dimension `(batch_size, feature_dim1, feature_dim2, ...)`
-           n_samples: [int]
-           Number of samples to use for the Monte Carlo estimate of the ELBO.
         """
+        
         q = self.encoder(X, A)
         z = q.rsample()  # Reparameterization trick
         A = rearrange(A, "b c d -> b (c d)")
@@ -220,8 +215,8 @@ class VAE(L.LightningModule):
 
 
 if __name__ == "__main__":
-    LATENT_DIM = 7
-    FILTER_LENGTH = 4
+    LATENT_DIM = 32
+    FILTER_LENGTH = 8
     datamodule = TUDataMoudle()
 
     prior = GaussianPrior(LATENT_DIM)
@@ -230,7 +225,7 @@ if __name__ == "__main__":
     VAE_model = VAE(prior, decoder, encoder)
 
     wandb_logger = L.pytorch.loggers.WandbLogger(project="GenGNN")
-    trainer = L.Trainer(max_epochs=690, logger=wandb_logger)
+    trainer = L.Trainer(max_epochs=1000, logger=wandb_logger)
 
     trainer.fit(VAE_model, datamodule)
 
