@@ -1,2 +1,5 @@
 lightning_logs
 wandb
+project3/__pycache__/
+project3/data/MUTAG/
+GenGNN/
