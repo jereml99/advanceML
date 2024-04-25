@@ -3,7 +3,7 @@ from typing import List
 import networkx as nx
 import numpy as np
 
-class baseline():
+class Baseline():
     def __init__(self, training_samples: List[nx.graph.Graph] ) -> None:
         np.random.seed(42)
         self.node_number_distribution = [training_sample.number_of_nodes()  for training_sample in training_samples]
@@ -28,9 +28,9 @@ if __name__ == "__main__":
     G2 = nx.DiGraph()
     nx.add_path(G1, [1, 2, 3, 4, 5, 6], weight=1)
     nx.add_path(G2, [10, 20, 30, 40], weight=2)
-    Training_samples = [G1, G2, G1, G2, G1, G2]
+    training_samples = [G1, G2, G1, G2, G1, G2]
     
-    b = baseline(Training_samples)
+    b = Baseline(training_samples)
     samples = b.sample(1)
     
     print(list(samples[0].edges()))
