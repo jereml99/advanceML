@@ -19,7 +19,7 @@ class Baseline():
             edge_number_distribution = self.edge_number_distribution_per_number_of_nodes[node_number] 
             p = (sum(edge_number_distribution)/len(edge_number_distribution)) / (node_number * (node_number-1) / 2)
             
-            samples.append(nx.erdos_renyi_graph(node_number, p, seed=42))
+            samples.append(nx.erdos_renyi_graph(node_number, p))
         
         return samples
 
