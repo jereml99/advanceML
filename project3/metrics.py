@@ -20,27 +20,22 @@ def unique(generated_samples):
 
 
 def degree_histogram(samples):
-    result = Counter()
+    result = []
     for sample in samples:
-        result += Counter(dict(nx.degree(sample)).values())
-    for key in result:
-        result[key] /= len(samples)
+        result.extend(list(dict(nx.degree(sample)).values()))
     return result
 
 def clustering_coefficient_histogram(samples):
     clustering_coefficients = []
     for sample in samples:
         clustering_coefficients.extend(list(nx.clustering(sample).values()))
-    
-    hist, bin_edges =  np.histogram(clustering_coefficients)
-    return hist/len(samples), bin_edges
+    return clustering_coefficients
 
 def eigenvector_centrality_histogram(samples):
     eigenvector_centralitys = []
     for sample in samples:
-        eigenvector_centralitys.extend(list(nx.eigenvector_centrality(sample, max_iter=1000).values()))
-    hist, bin_edges =  np.histogram(eigenvector_centralitys)
-    return hist/len(samples), bin_edges
+        eigenvector_centralitys.extend(list(nx.eigenvector_centrality(sample, max_iter=10000).values()))
+    return eigenvector_centralitys
 
 if __name__ == "__main__":
     G1 = nx.DiGraph()
