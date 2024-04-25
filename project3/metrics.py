@@ -1,5 +1,6 @@
+from collections import Counter
 import networkx as nx
-
+import numpy as np
 
 def novel(generated_samples, training_samples):
     return sum(
@@ -19,13 +20,27 @@ def unique(generated_samples):
 
 
 def degree_histogram(samples):
-    return [list(nx.degree_histogram(sample)) for sample in samples]
+    result = Counter()
+    for sample in samples:
+        result += Counter(dict(nx.degree(sample)).values())
+    for key in result:
+        result[key] /= len(samples)
+    return result
 
 def clustering_coefficient_histogram(samples):
-    return [list(nx.clustering(sample).values()) for sample in samples]
+    clustering_coefficients = []
+    for sample in samples:
+        clustering_coefficients.extend(list(nx.clustering(sample).values()))
+    
+    hist, bin_edges =  np.histogram(clustering_coefficients)
+    return hist/len(samples), bin_edges
 
 def eigenvector_centrality_histogram(samples):
-    return [list(nx.eigenvector_centrality(sample, max_iter=1000).values()) for sample in samples]
+    eigenvector_centralitys = []
+    for sample in samples:
+        eigenvector_centralitys.extend(list(nx.eigenvector_centrality(sample, max_iter=1000).values()))
+    hist, bin_edges =  np.histogram(eigenvector_centralitys)
+    return hist/len(samples), bin_edges
 
 if __name__ == "__main__":
     G1 = nx.DiGraph()
