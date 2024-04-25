@@ -9,7 +9,6 @@ import torch
 import torch.nn as nn
 import torch.distributions as td
 import torch.utils.data
-from torch.nn import functional as F
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
@@ -265,8 +264,7 @@ def plot(model, data_loader, device):
 
 if __name__ == "__main__":
     from torchvision import datasets, transforms
-    from torchvision.utils import save_image, make_grid
-    import glob
+    from torchvision.utils import save_image
 
     # Parse arguments
     import argparse

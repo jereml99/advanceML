@@ -1,11 +1,11 @@
 import lightning as L
 import torch
 from torch.utils.data import random_split
-import torch.utils.data as data
 from torch_geometric.datasets import TUDataset
 from torch_geometric.loader import DataLoader
 
 FEATURE_DIM = 7
+
 
 class TUDataMoudle(L.LightningDataModule):
     def prepare_data(self):

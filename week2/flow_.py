@@ -244,7 +244,6 @@ def train(model, optimizer, data_loader, epochs, device):
 
 if __name__ == "__main__":
     import torch.utils.data
-    from torchvision import datasets, transforms
     from torchvision.utils import save_image
     import ToyData as ToyData
 
@@ -364,9 +363,6 @@ if __name__ == "__main__":
         torch.save(model.state_dict(), args.model)
 
     elif args.mode == "sample":
-        import matplotlib.pyplot as plt
-        import numpy as np
-
         model.load_state_dict(
             torch.load(args.model, map_location=torch.device(args.device))
         )

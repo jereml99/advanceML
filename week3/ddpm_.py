@@ -3,8 +3,6 @@
 
 import torch
 import torch.nn as nn
-import torch.distributions as td
-import torch.nn.functional as F
 from tqdm import tqdm
 
 
@@ -208,8 +206,6 @@ class FcNetwork(nn.Module):
 
 if __name__ == "__main__":
     import torch.utils.data
-    from torchvision import datasets, transforms
-    from torchvision.utils import save_image
     import ToyData
 
     # Parse arguments

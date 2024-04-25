@@ -7,6 +7,7 @@ from einops import rearrange
 
 from datamodule import FEATURE_DIM, TUDataMoudle
 
+
 class GaussianPrior(torch.nn.Module):
     def __init__(self, M):
         """
@@ -40,7 +41,7 @@ class SimpleGraphConv(torch.nn.Module):
         filter_length : Length of convolution filter
     """
 
-    def __init__(self, node_feature_dim, filter_length, M = 1):
+    def __init__(self, node_feature_dim, filter_length, M=1):
         super().__init__()
 
         # Define dimensions and other hyperparameters
@@ -52,7 +53,7 @@ class SimpleGraphConv(torch.nn.Module):
         self.h.data[0] = 1.0
 
         # State output network
-        self.output_net = torch.nn.Linear(self.node_feature_dim, M*2)
+        self.output_net = torch.nn.Linear(self.node_feature_dim, M * 2)
 
         self.cached = False
 
@@ -75,7 +76,6 @@ class SimpleGraphConv(torch.nn.Module):
 
         """
         # Compute adjacency matrices and node features per graph
- 
 
         # ---------------------------------------------------------------------------------------------------------
 
@@ -91,14 +91,10 @@ class SimpleGraphConv(torch.nn.Module):
         # Aggregate the node states
         graph_state = node_state.sum(1)
 
-   
-        mean, std = torch.chunk(
-            self.output_net(graph_state), 2, dim=-1
-        ) 
-        return td.Independent(
-            td.Normal(loc=mean, scale=torch.exp(std)), 1
-        )
-    
+        mean, std = torch.chunk(self.output_net(graph_state), 2, dim=-1)
+        return td.Independent(td.Normal(loc=mean, scale=torch.exp(std)), 1)
+
+
 class BernoulliDecoder(torch.nn.Module):
     def __init__(self, latent_dim, out_dim):
         """
@@ -119,7 +115,6 @@ class BernoulliDecoder(torch.nn.Module):
             torch.nn.Linear(256, out_dim),
         )
 
-
     def forward(self, z):
         """
         Given a batch of latent variables, return a Bernoulli distribution over the data space.
@@ -130,7 +125,7 @@ class BernoulliDecoder(torch.nn.Module):
         """
         logits = self.decoder_net(z)
         return td.Independent(td.Bernoulli(logits=logits), 2)
-    
+
 
 class VAE(L.LightningModule):
     """
@@ -152,7 +147,7 @@ class VAE(L.LightningModule):
         self.prior = prior
         self.decoder = decoder
         self.encoder = encoder
-        
+
         self.save_hyperparameters()
 
     def elbo(self, X, A):
@@ -167,7 +162,7 @@ class VAE(L.LightningModule):
         """
         q = self.encoder(X, A)
         z = q.rsample()  # Reparameterization trick
-        A = rearrange(A,"b c d -> b (c d)")
+        A = rearrange(A, "b c d -> b (c d)")
         elbo = torch.mean(
             self.decoder(z).log_prob(A) - td.kl_divergence(q, self.prior()), dim=0
         )
@@ -194,9 +189,9 @@ class VAE(L.LightningModule):
         """
         A = to_dense_adj(edge_index, batch)
         X, idx = to_dense_batch(x, batch)
-        
+
         return -self.elbo(X, A)
-    
+
     def training_step(self, batch, batch_idx):
         """
         Compute the negative ELBO for the given batch of data.
@@ -208,40 +203,35 @@ class VAE(L.LightningModule):
            Index of the batch.
         """
         x, edge_index, batch = batch.x, batch.edge_index, batch.batch
-        
+
         loss = self(x, edge_index, batch)
         self.log("train_loss", loss)
         return loss
-    
+
     def validation_step(self, batch, batch_idx):
         x, edge_index, batch = batch.x, batch.edge_index, batch.batch
-        
+
         loss = self(x, edge_index, batch)
         self.log("validation_loss", loss)
         return loss
-    
+
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=1e-3)
 
+
 if __name__ == "__main__":
-        
-    LATENT_DIM = 7 
+    LATENT_DIM = 7
     FILTER_LENGTH = 4
     datamodule = TUDataMoudle()
-    
+
     prior = GaussianPrior(LATENT_DIM)
     encoder = SimpleGraphConv(FEATURE_DIM, FILTER_LENGTH, LATENT_DIM)
-    decoder = BernoulliDecoder(LATENT_DIM, 28*28)
+    decoder = BernoulliDecoder(LATENT_DIM, 28 * 28)
     VAE_model = VAE(prior, decoder, encoder)
-    
-    wandb_logger = L.pytorch.loggers.WandbLogger( project="GenGNN")
+
+    wandb_logger = L.pytorch.loggers.WandbLogger(project="GenGNN")
     trainer = L.Trainer(max_epochs=690, logger=wandb_logger)
-   
+
     trainer.fit(VAE_model, datamodule)
-    
+
     trainer.save_checkpoint("project3/model.ckpt")
-
-
-    
-    
-            

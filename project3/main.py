@@ -4,7 +4,7 @@ from model import VAE
 from datamodule import TUDataMoudle
 
 if __name__ == "__main__":
-        LightningCLI(
+    LightningCLI(
         VAE,
         TUDataMoudle,
     )
