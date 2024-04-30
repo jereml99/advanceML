@@ -182,8 +182,8 @@ class VAE(L.LightningModule):
         x: [torch.Tensor]
            A tensor of dimension `(batch_size, feature_dim1, feature_dim2)`
         """
-        A = to_dense_adj(edge_index, batch)
-        X, idx = to_dense_batch(x, batch)
+        A = to_dense_adj(edge_index, batch, max_num_nodes=28)
+        X, idx = to_dense_batch(x, batch, max_num_nodes=28)
 
         return -self.elbo(X, A)
 
@@ -215,7 +215,7 @@ class VAE(L.LightningModule):
 
 
 if __name__ == "__main__":
-    LATENT_DIM = 32
+    LATENT_DIM = 8
     FILTER_LENGTH = 8
     datamodule = TUDataMoudle()
 
@@ -225,7 +225,7 @@ if __name__ == "__main__":
     VAE_model = VAE(prior, decoder, encoder)
 
     wandb_logger = L.pytorch.loggers.WandbLogger(project="GenGNN")
-    trainer = L.Trainer(max_epochs=1000, logger=wandb_logger)
+    trainer = L.Trainer(max_epochs=1000, logger=wandb_logger, callbacks=[L.pytorch.callbacks.ModelCheckpoint(monitor="validation_loss")])
 
     trainer.fit(VAE_model, datamodule)
 

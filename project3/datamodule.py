@@ -17,11 +17,11 @@ class TUDataMoudle(L.LightningDataModule):
         dataset = TUDataset(root="./data/", name="MUTAG")
         rng = torch.Generator().manual_seed(0)
         self.train_dataset, self.validation_dataset, self.test_dataset = random_split(
-            dataset, (100, 44, 44), generator=rng
+            dataset, (144, 44, 0), generator=rng
         )
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=100)
+        return DataLoader(self.train_dataset,batch_size=144)
 
     def val_dataloader(self):
         return DataLoader(self.validation_dataset, batch_size=44)
