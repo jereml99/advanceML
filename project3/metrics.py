@@ -1,4 +1,5 @@
 import networkx as nx
+from networkx import weisfeiler_lehman_graph_hash
 
 
 def novel(generated_samples, training_samples):
@@ -6,7 +7,7 @@ def novel(generated_samples, training_samples):
         [
             all(
                 [
-                    not nx.is_isomorphic(generated_sample, training_sample)
+                    not (weisfeiler_lehman_graph_hash(generated_sample) == weisfeiler_lehman_graph_hash(training_sample))
                     for training_sample in training_samples
                 ]
             )
@@ -21,7 +22,7 @@ def unique(generated_samples):
         if (
             all(
                 [
-                    not nx.is_isomorphic(generated_sample, unique_sample)
+                    not (weisfeiler_lehman_graph_hash(generated_sample) == weisfeiler_lehman_graph_hash(unique_sample))
                     for unique_sample in unique_samples
                 ]
             )
