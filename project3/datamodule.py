@@ -21,7 +21,7 @@ class TUDataMoudle(L.LightningDataModule):
         )
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset,batch_size=144)
+        return DataLoader(self.train_dataset, batch_size=144)
 
     def val_dataloader(self):
         return DataLoader(self.validation_dataset, batch_size=44)

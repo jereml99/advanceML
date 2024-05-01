@@ -154,7 +154,7 @@ class VAE(L.LightningModule):
         """
         Compute the ELBO for the given batch of data.
         """
-        
+
         q = self.encoder(X, A)
         z = q.rsample()  # Reparameterization trick
         A = rearrange(A, "b c d -> b (c d)")
@@ -215,8 +215,8 @@ class VAE(L.LightningModule):
 
 
 if __name__ == "__main__":
-    LATENT_DIM = 8
-    FILTER_LENGTH = 8
+    LATENT_DIM = 64
+    FILTER_LENGTH = 4
     datamodule = TUDataMoudle()
 
     prior = GaussianPrior(LATENT_DIM)
@@ -225,7 +225,23 @@ if __name__ == "__main__":
     VAE_model = VAE(prior, decoder, encoder)
 
     wandb_logger = L.pytorch.loggers.WandbLogger(project="GenGNN")
-    trainer = L.Trainer(max_epochs=1000, logger=wandb_logger, callbacks=[L.pytorch.callbacks.ModelCheckpoint(monitor="validation_loss")])
+    trainer = L.Trainer(
+        max_epochs=1000,
+        logger=wandb_logger,
+        callbacks=[
+            L.pytorch.callbacks.ModelCheckpoint(
+                monitor="train_loss",
+                dirpath="project3",
+                filename="model-{epoch:02d}-{train_loss:.2f}",
+            ),
+            L.pytorch.callbacks.ModelCheckpoint(
+                monitor="validation_loss",
+                dirpath="project3",
+                filename="model-{epoch:02d}-{validation_loss:.2f}",
+            ),
+            
+        ],
+    )
 
     trainer.fit(VAE_model, datamodule)
 
