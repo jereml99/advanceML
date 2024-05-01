@@ -47,7 +47,7 @@ class InnerProductDecoder(torch.nn.Module):
            A tensor of dimension `(batch_size, M)`, where M is the dimension of the latent space.
         """
         A_pred = torch.bmm(z, z.permute(0, 2, 1)) # .permute(0, 2, 1) is T
-        return td.Independent(td.Bernoulli(logits=A_pred), 2)
+        return td.Independent(td.Bernoulli(logits=torch.sigmoid(A_pred)), 2)
 
 class VAE(L.LightningModule):
     """
@@ -141,6 +141,42 @@ class VAE(L.LightningModule):
 
         return [optimizer], [scheduler]
 
+class GraphConvEncoder(torch.nn.Module):
+    def __init__(self, node_feature_dim, filter_length, M):
+        super().__init__()
+
+        self.node_feature_dim = node_feature_dim
+        self.filter_length = filter_length
+
+        # Define graph filter
+        self.gcn_mean = SimpleGraphConv(node_feature_dim, filter_length, M)
+        self.gcn_std = SimpleGraphConv(node_feature_dim, filter_length, M)
+
+        self.cached = False
+
+    def forward(self, X, A):
+        """Evaluate neural network on a batch of graphs.
+
+        Parameters
+        ----------
+        x : torch.tensor (num_nodes x num_features)
+            Node features.
+        edge_index : torch.tensor (2 x num_edges)
+            Edges (to-node, from-node) in all graphs.
+        batch : torch.tensor (num_nodes)
+            Index of which graph each node belongs to.
+
+        Returns
+        -------
+        out : torch tensor (num_graphs)
+            Neural network output for each graph.
+
+        """
+        mean = self.gcn_mean(X, A)
+        std = self.gcn_std(X, A)
+        return td.Independent(td.Normal(loc=mean, scale=torch.exp(std)), 2)
+
+
 class SimpleGraphConv(torch.nn.Module):
     """Simple graph convolution for graph classification
 
@@ -158,11 +194,11 @@ class SimpleGraphConv(torch.nn.Module):
         self.filter_length = filter_length
 
         # Define graph filter
-        self.h = torch.nn.Parameter(1e-5 * torch.randn(filter_length))
+        self.h = torch.nn.Parameter(1e-5 * torch.randn(filter_length), requires_grad=True)
         self.h.data[0] = 1.0
 
         # State output network
-        self.output_net = torch.nn.Linear(self.node_feature_dim, M * 2)
+        self.output_net = torch.nn.Linear(self.node_feature_dim, M )
 
         self.cached = False
 
@@ -189,17 +225,15 @@ class SimpleGraphConv(torch.nn.Module):
         diagonal_filter = (self.h[None,None] * exponentiated_L).sum(2, keepdim=True)
         node_state = U @ (diagonal_filter * (U.transpose(1, 2) @ X))
         output = self.output_net(node_state)
-        mean, std = torch.chunk(output, 2, dim=-1)
-        return td.Independent(td.Normal(loc=mean, scale=torch.exp(std)), 2)
-
+        return output
 
 if __name__ == "__main__":
-    LATENT_DIM = 1
-    FILTER_LENGTH = 1
+    LATENT_DIM = 4
+    FILTER_LENGTH = 2
     datamodule = TUDataMoudle()
 
     prior = GaussianPrior(LATENT_DIM)
-    encoder = SimpleGraphConv(FEATURE_DIM, FILTER_LENGTH, LATENT_DIM)
+    encoder = GraphConvEncoder(FEATURE_DIM, FILTER_LENGTH, LATENT_DIM)
     decoder = InnerProductDecoder()
     VAE_model = VAE(prior, decoder, encoder)
     VAE_model.sample()
@@ -218,7 +252,6 @@ if __name__ == "__main__":
                 dirpath="project3",
                 filename="model-{epoch:02d}-{validation_loss:.2f}",
             ),
-            
         ],
     )
 
