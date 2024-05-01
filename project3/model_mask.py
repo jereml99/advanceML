@@ -133,7 +133,7 @@ class BernoulliDecoder(torch.nn.Module):
             torch.nn.Linear(256, out_dim),
         )
 
-    def forward(self, z, mask):
+    def forward(self, z, mask = None):
         """
         Given a batch of latent variables, return a Bernoulli distribution over the data space.
 
@@ -141,6 +141,9 @@ class BernoulliDecoder(torch.nn.Module):
         z: [torch.Tensor]
            A tensor of dimension `(batch_size, M)`, where M is the dimension of the latent space.
         """
+        if mask is None:
+            probs = torch.sigmoid(self.decoder_net(z))
+            return td.Independent(td.Bernoulli(probs=probs), 2)
         probs = torch.sigmoid(self.decoder_net(z))
         mask = mask.unsqueeze(2)
         mask_matrix = torch.bmm(mask, mask.permute(0, 2, 1)).view(-1, probs.shape[1])
@@ -189,7 +192,7 @@ class VAE(L.LightningModule):
         )
         return elbo
 
-    def sample(self, n_samples=1):
+    def sample(self, n_samples=10):
         """
         Sample from the model.
 
@@ -249,7 +252,7 @@ class VAE(L.LightningModule):
 
 
 if __name__ == "__main__":
-    LATENT_DIM = 3
+    LATENT_DIM = 8
     FILTER_LENGTH = 4
     datamodule = TUDataMoudle()
 
@@ -260,9 +263,22 @@ if __name__ == "__main__":
 
     wandb_logger = L.pytorch.loggers.WandbLogger(project="GenGNN")
     trainer = L.Trainer(
-        max_epochs=500,
+        max_epochs=1000,
+        accelerator="cpu",
         logger=wandb_logger,
-        callbacks=[L.pytorch.callbacks.ModelCheckpoint(monitor="validation_loss")],
+        callbacks=[
+            L.pytorch.callbacks.ModelCheckpoint(
+                monitor="train_loss",
+                dirpath="project3",
+                filename="model-{epoch:02d}-{train_loss:.2f}",
+            ),
+            L.pytorch.callbacks.ModelCheckpoint(
+                monitor="validation_loss",
+                dirpath="project3",
+                filename="model-{epoch:02d}-{validation_loss:.2f}",
+            ),
+            
+        ],
     )
 
     trainer.fit(VAE_model, datamodule)

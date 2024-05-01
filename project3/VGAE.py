@@ -8,7 +8,7 @@ from torch.nn import functional as F
 from datamodule import FEATURE_DIM, TUDataMoudle
 from torch.optim.lr_scheduler import StepLR
 
-class GaussianPrior(torch.nn.Module):
+class GaussianPriorVGAE(torch.nn.Module):
     def __init__(self, latent_dim, node_count=28):
         """
         Define a Gaussian prior distribution with zero mean and unit variance.
@@ -17,7 +17,7 @@ class GaussianPrior(torch.nn.Module):
         M: [int]
            Dimension of the latent space.
         """
-        super(GaussianPrior, self).__init__()
+        super(GaussianPriorVGAE, self).__init__()
         self.latent_dim = latent_dim
         self.mean = torch.nn.Parameter(torch.zeros((node_count,self.latent_dim)), requires_grad=False)
         self.std = torch.nn.Parameter(torch.ones((node_count,self.latent_dim)), requires_grad=False)
@@ -49,7 +49,7 @@ class InnerProductDecoder(torch.nn.Module):
         A_pred = torch.bmm(z, z.permute(0, 2, 1)) # .permute(0, 2, 1) is T
         return td.Independent(td.Bernoulli(logits=torch.sigmoid(A_pred)), 2)
 
-class VAE(L.LightningModule):
+class VGAE(L.LightningModule):
     """
     Define a Variational Autoencoder (VAE) model.
     """
@@ -65,7 +65,7 @@ class VAE(L.LightningModule):
                 The encoder distribution over the latent space.
         """
 
-        super(VAE, self).__init__()
+        super(VGAE, self).__init__()
         self.prior = prior
         self.decoder = decoder
         self.encoder = encoder
@@ -177,7 +177,7 @@ class GraphConvEncoder(torch.nn.Module):
         return td.Independent(td.Normal(loc=mean, scale=torch.exp(std)), 2)
 
 
-class SimpleGraphConv(torch.nn.Module):
+class SimpleGraphConvVGAE(torch.nn.Module):
     """Simple graph convolution for graph classification
 
     Keyword Arguments
@@ -228,14 +228,14 @@ class SimpleGraphConv(torch.nn.Module):
         return output
 
 if __name__ == "__main__":
-    LATENT_DIM = 4
-    FILTER_LENGTH = 2
+    LATENT_DIM = 8
+    FILTER_LENGTH = 4
     datamodule = TUDataMoudle()
 
     prior = GaussianPrior(LATENT_DIM)
     encoder = GraphConvEncoder(FEATURE_DIM, FILTER_LENGTH, LATENT_DIM)
     decoder = InnerProductDecoder()
-    VAE_model = VAE(prior, decoder, encoder)
+    VAE_model = VGAE(prior, decoder, encoder)
     VAE_model.sample()
     wandb_logger = L.pytorch.loggers.WandbLogger(project="GenGNN")
     trainer = L.Trainer(
